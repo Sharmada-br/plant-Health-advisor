@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Plant Disease Advisor</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <select name="plant" required>
+    <option value="">Select Plant</option>
+    {% for plant in plants %}
+        <option value="{{ plant.id }}"
+            {% if selected_plant and plant.id == selected_plant.id %}
+                selected
+            {% endif %}
+        >
+            {{ plant.name }}
+        </option>
+    {% endfor %}
+</select>
+{% if disease.image %}
+    <img src="{{ disease.image.url }}" class="disease-img">
+{% endif %}
+
+<div class="container">
+
+    <h1>🌱 Plant Disease Treatment Advisor</h1>
+    <p>Total Plants: {{ plants|length }}</p>
+
+    <!-- 🔍 SEARCH BAR -->
+    <form method="GET" class="search-box">
+        <input type="text" name="q" placeholder="Search plant..." />
+        <button type="submit">Search</button>
+    </form>
+
+    <!-- 🌿 SELECT PLANT -->
+    <form method="POST" class="form-box">
+        {% csrf_token %}
+        <select name="plant" required>
+            <option value="">Select Plant</option>
+            {% for plant in plants %}
+                <option value="{{ plant.id }}">{{ plant.name }}</option>
+            {% endfor %}
+        </select>
+        <button type="submit">Check Diseases</button>
+    </form>
+
+    <!-- 🌾 RESULTS -->
+    {% if diseases %}
+        <h2>Diseases for {{ selected_plant.name }}</h2>
+
+        <div class="cards">
+            {% for disease in diseases %}
+                <div class="card">
+
+                    <h3>{{ disease.name }}</h3>
+
+                    <p><b>Description:</b> {{ disease.description }}</p>
+                    <p><b>Symptoms:</b> {{ disease.symptoms }}</p>
+                    <p><b>Causes:</b> {{ disease.causes }}</p>
+
+                    <div class="treatment">
+                        <h4>🩺 Treatment</h4>
+                        <p><b>Medicines:</b> {{ disease.treatment.medicines }}</p>
+                        <p><b>Dosage:</b> {{ disease.treatment.dosage }}</p>
+                        <p><b>Precautions:</b> {{ disease.treatment.precautions }}</p>
+                        <p><b>Organic:</b> {{ disease.treatment.organic_alternatives }}</p>
+                    </div>
+
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+</div>
+
+</body>
+</html>
