@@ -1,8 +1,10 @@
 from django.shortcuts import render
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from .models import Plant, Disease, Treatment
 from .serializers import PlantSerializer
+from rest_framework.permissions import IsAuthenticated
+
 
 
 # 🔹 BULK ADD API
@@ -37,13 +39,31 @@ def bulk_add_data(request):
 
 # 🔹 GET PLANTS API (WITH SEARCH)
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def plant_list_api(request):
     query = request.GET.get('q')
+    symptom = request.GET.get('symptom')
+    disease_name = request.GET.get('disease')
 
+    plants = Plant.objects.all()
+
+    # 🔍 Search by plant name
     if query:
-        plants = Plant.objects.filter(name__icontains=query)
-    else:
-        plants = Plant.objects.all()
+        plants = plants.filter(name__icontains=query)
+
+    # 🌿 Filter by symptoms
+    if symptom:
+        plants = plants.filter(
+            diseases__symptoms__icontains=symptom
+        ).distinct()
+
+    # 🌾 Filter by disease name
+    if disease_name:
+        plants = plants.filter(
+            diseases__name__icontains=disease_name
+        ).distinct()
+
+    # ❌ No result handling
     if not plants.exists():
         return Response({
             "message": "No plant found ❌",
