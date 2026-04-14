@@ -97,3 +97,9 @@ button {
     border-radius: 8px;
     display: inline-block;
 }
+.disease-img {
+    width: 100%;         
+    object-fit: cover;   
+    border-radius: 10px;  
+    display: block;
+}

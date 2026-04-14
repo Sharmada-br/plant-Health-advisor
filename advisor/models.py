@@ -1,7 +1,8 @@
 from django.db import models
 
+
 class Plant(models.Model):
-    name = models.CharField(max_length=100)
+    name = models.CharField(max_length=100, unique=True)  # ✅ No duplicate plants
 
     def __str__(self):
         return self.name
@@ -15,12 +16,20 @@ class Disease(models.Model):
     causes = models.TextField()
     image = models.ImageField(upload_to='disease_images/', null=True, blank=True)
 
+    class Meta:
+        unique_together = ('plant', 'name')  # ✅ No duplicate disease for same plant
+
     def __str__(self):
-        return self.name
+        return f"{self.name} ({self.plant.name})"
 
 
 class Treatment(models.Model):
-    disease = models.OneToOneField(Disease, on_delete=models.CASCADE, related_name='treatment')
+    disease = models.OneToOneField(
+        Disease,
+        on_delete=models.CASCADE,
+        related_name='treatment'
+    )  # ✅ Already prevents duplicates
+
     medicines = models.TextField()
     dosage = models.TextField()
     precautions = models.TextField()
