@@ -3,8 +3,9 @@
 <html>
 <head>
     <title>Plant Disease Advisor</title>
-    <link rel="stylesheet" href="{% static 'style.css' %}">
+    <link rel="stylesheet" href="{% static 'style.css' %}?v=1">
 </head>
+
 <body>
 
 <header>
@@ -15,7 +16,7 @@
 
     <p class="count">Total Plants: {{ plants|length }}</p>
 
-    <!-- 🔍 SEARCH -->
+    <!-- SEARCH -->
     <div class="search-box">
         <input type="text" id="searchInput" placeholder="Search plant, disease, symptom..." autocomplete="off">
         <button onclick="submitSearch()">Search</button>
@@ -25,7 +26,7 @@
         <p class="no-data">❌ No related results found for "{{ query }}"</p>
     {% endif %}
 
-    <!-- 🌿 SELECT PLANT -->
+    <!--  SELECT PLANT -->
     <form method="GET" class="form-box">
         <select name="plant" onchange="this.form.submit()">
             <option value="">Select Plant</option>
@@ -41,7 +42,7 @@
         </select>
     </form>
 
-    <!-- 🌾 RESULTS -->
+    <!--  RESULTS -->
     {% if diseases %}
         <h2>🌾 Diseases for {{ selected_plant.name }}</h2>
 
@@ -72,7 +73,7 @@
 
 </div>
 
-<!-- 🔹 JAVASCRIPT -->
+<!--  JAVASCRIPT -->
 <script>
 const input = document.getElementById("searchInput");
 const box = document.getElementById("suggestions");

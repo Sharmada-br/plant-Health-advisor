@@ -2,7 +2,7 @@ from django.db import models
 
 
 class Plant(models.Model):
-    name = models.CharField(max_length=100, unique=True)  # ✅ No duplicate plants
+    name = models.CharField(max_length=100, unique=True)  #  No duplicate plants
 
     def __str__(self):
         return self.name
@@ -17,7 +17,7 @@ class Disease(models.Model):
     image = models.ImageField(upload_to='disease_images/', null=True, blank=True)
 
     class Meta:
-        unique_together = ('plant', 'name')  # ✅ No duplicate disease for same plant
+        unique_together = ('plant', 'name')  #  No duplicate disease for same plant
 
     def __str__(self):
         return f"{self.name} ({self.plant.name})"
@@ -28,7 +28,7 @@ class Treatment(models.Model):
         Disease,
         on_delete=models.CASCADE,
         related_name='treatment'
-    )  # ✅ Already prevents duplicates
+    )
 
     medicines = models.TextField()
     dosage = models.TextField()
