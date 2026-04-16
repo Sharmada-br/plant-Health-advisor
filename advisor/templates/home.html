@@ -16,38 +16,38 @@
     <p class="count">Total Plants: {{ plants|length }}</p>
 
     <!-- 🔍 SEARCH -->
-    <form method="GET" class="search-box">
-        <input type="text" name="q" placeholder="Search plant...">
-        <button type="submit">Search</button>
-    </form>
-    
+    <div class="search-box">
+        <input type="text" id="searchInput" placeholder="Search plant, disease, symptom..." autocomplete="off">
+        <button onclick="submitSearch()">Search</button>
+        <div id="suggestions" class="suggestions-box"></div>
+    </div>
+    {% if query and plants|length == 0 %}
+        <p class="no-data">❌ No related results found for "{{ query }}"</p>
+    {% endif %}
 
     <!-- 🌿 SELECT PLANT -->
-<form method="GET" class="form-box">
-    <select name="plant" required onchange="this.form.submit()">
-        <option value="">Select Plant</option>
-        {% for plant in plants %}
-            <option value="{{ plant.id }}"
-                {% if selected_plant and plant.id == selected_plant.id %}
-                    selected
-                {% endif %}
-            >
-                {{ plant.name }}
-            </option>
-        {% endfor %}
-    </select>
-</form>
+    <form method="GET" class="form-box">
+        <select name="plant" onchange="this.form.submit()">
+            <option value="">Select Plant</option>
+            {% for plant in plants %}
+                <option value="{{ plant.id }}"
+                    {% if selected_plant and plant.id == selected_plant.id %}
+                        selected
+                    {% endif %}
+                >
+                    {{ plant.name }}
+                </option>
+            {% endfor %}
+        </select>
+    </form>
 
     <!-- 🌾 RESULTS -->
     {% if diseases %}
-        <h2 class="selected-title">
-            🌾 Diseases for {{ selected_plant.name }}
-        </h2>
+        <h2>🌾 Diseases for {{ selected_plant.name }}</h2>
 
         <div class="cards">
             {% for disease in diseases %}
                 <div class="card">
-
                     <h3>{{ disease.name }}</h3>
 
                     {% if disease.image %}
@@ -65,14 +65,51 @@
                         <p><b>Precautions:</b> {{ disease.treatment.precautions }}</p>
                         <p><b>Organic:</b> {{ disease.treatment.organic_alternatives }}</p>
                     </div>
-
                 </div>
             {% endfor %}
         </div>
     {% endif %}
 
-
 </div>
+
+<!-- 🔹 JAVASCRIPT -->
+<script>
+const input = document.getElementById("searchInput");
+const box = document.getElementById("suggestions");
+
+input.addEventListener("keyup", function() {
+    let query = input.value;
+
+    if (query.length === 0) {
+        box.innerHTML = "";
+        return;
+    }
+
+    fetch(`/search-suggestions/?q=${query}`)
+        .then(res => res.json())
+        .then(data => {
+            box.innerHTML = "";
+
+            data.forEach(item => {
+                let div = document.createElement("div");
+                div.innerHTML = `<b>${item.type}:</b> ${item.name}`;
+                div.classList.add("suggestion-item");
+
+                div.onclick = () => {
+                    input.value = item.name;
+                    box.innerHTML = "";
+                };
+
+                box.appendChild(div);
+            });
+        });
+});
+
+function submitSearch() {
+    let query = input.value;
+    window.location.href = `/?q=${query}`;
+}
+</script>
 
 </body>
 </html>

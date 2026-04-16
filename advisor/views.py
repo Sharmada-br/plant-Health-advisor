@@ -1,5 +1,7 @@
 from django.shortcuts import render
 from django.db.models import Q
+from django.http import JsonResponse
+from difflib import get_close_matches
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
@@ -7,7 +9,7 @@ from .models import Plant, Disease, Treatment
 from .serializers import PlantSerializer
 
 
-# 🔹 BULK ADD API (NO DUPLICATES)
+# 🔹 BULK ADD API
 @api_view(['POST'])
 def bulk_add_data(request):
     data_list = request.data
@@ -16,9 +18,7 @@ def bulk_add_data(request):
         return Response({"error": "Expected a list of data"}, status=400)
 
     for data in data_list:
-        plant, _ = Plant.objects.get_or_create(
-            name=data.get('plant')
-        )
+        plant, _ = Plant.objects.get_or_create(name=data.get('plant'))
 
         disease, created = Disease.objects.get_or_create(
             plant=plant,
@@ -42,40 +42,25 @@ def bulk_add_data(request):
     return Response({"message": "Bulk data added successfully ✅"})
 
 
-# 🔹 GET API WITH AUTH + FILTER
+# 🔹 API WITH AUTH
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def plant_list_api(request):
     query = request.GET.get('q')
-    symptom = request.GET.get('symptom')
-    disease_name = request.GET.get('disease')
 
     plants = Plant.objects.all()
 
     if query:
         plants = plants.filter(name__icontains=query)
 
-    if symptom:
-        plants = plants.filter(
-            diseases__symptoms__icontains=symptom
-        ).distinct()
-
-    if disease_name:
-        plants = plants.filter(
-            diseases__name__icontains=disease_name
-        ).distinct()
-
     if not plants.exists():
-        return Response({
-            "message": "No plant found ❌",
-            "data": []
-        })
+        return Response({"message": "No plant found ❌", "data": []})
 
     serializer = PlantSerializer(plants, many=True)
     return Response(serializer.data)
 
 
-# 🔹 FRONTEND VIEW (SMART SEARCH)
+# 🔹 FRONTEND VIEW (SMART + SIMILAR SEARCH)
 def home(request):
     plants = Plant.objects.all()
     diseases = None
@@ -83,7 +68,6 @@ def home(request):
 
     query = request.GET.get('q')
 
-    # 🔍 SMART SEARCH
     if query:
         plants = Plant.objects.filter(
             Q(name__icontains=query) |
@@ -91,13 +75,19 @@ def home(request):
             Q(diseases__symptoms__icontains=query)
         ).distinct()
 
-    # 🌿 SELECT PLANT
+        # 🔥 SIMILAR SEARCH IF NOTHING FOUND
+        if not plants.exists():
+            all_names = list(Plant.objects.values_list('name', flat=True))
+            similar = get_close_matches(query, all_names, n=5, cutoff=0.5)
+
+            if similar:
+                plants = Plant.objects.filter(name__in=similar)
+
     plant_id = request.GET.get('plant')
     if plant_id:
         try:
             selected_plant = Plant.objects.get(id=plant_id)
 
-            # ✅ FILTER DISEASES BASED ON SEARCH
             if query:
                 diseases = selected_plant.diseases.filter(
                     Q(name__icontains=query) |
@@ -113,5 +103,27 @@ def home(request):
     return render(request, 'home.html', {
         'plants': plants,
         'diseases': diseases,
-        'selected_plant': selected_plant
+        'selected_plant': selected_plant,
+        'query': query 
     })
+
+
+# 🔹 SEARCH SUGGESTIONS
+def search_suggestions(request):
+    query = request.GET.get('q', '')
+    results = []
+
+    if query:
+        plants = Plant.objects.filter(name__icontains=query)[:5]
+        for p in plants:
+            results.append({"type": "Plant", "name": p.name})
+
+        diseases = Disease.objects.filter(name__icontains=query)[:5]
+        for d in diseases:
+            results.append({"type": "Disease", "name": d.name})
+
+        symptoms = Disease.objects.filter(symptoms__icontains=query)[:5]
+        for s in symptoms:
+            results.append({"type": "Symptom", "name": s.symptoms[:40]})
+
+    return JsonResponse(results, safe=False)
