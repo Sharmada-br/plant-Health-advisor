@@ -9,21 +9,22 @@
 <body>
 
 <header>
-    <h1>🌱 Plant Disease Treatment Advisor</h1>
+    <h1> Plant Disease Treatment Advisor</h1>
 </header>
 
 <div class="container">
 
     <p class="count">Total Plants: {{ plants|length }}</p>
 
-    <!-- SEARCH -->
-    <div class="search-box">
+    <!--  SEARCH -->
+    <div class="search-box" style="position:relative;">
         <input type="text" id="searchInput" placeholder="Search plant, disease, symptom..." autocomplete="off">
         <button onclick="submitSearch()">Search</button>
         <div id="suggestions" class="suggestions-box"></div>
     </div>
-    {% if query and plants|length == 0 %}
-        <p class="no-data">❌ No related results found for "{{ query }}"</p>
+
+    {% if query and not diseases and not plants %}
+        <p class="no-data"> No related results found for "{{ query }}"</p>
     {% endif %}
 
     <!--  SELECT PLANT -->
@@ -44,12 +45,21 @@
 
     <!--  RESULTS -->
     {% if diseases %}
-        <h2>🌾 Diseases for {{ selected_plant.name }}</h2>
+
+        {% if selected_plant %}
+            <h2> Diseases for {{ selected_plant.name }}</h2>
+        {% else %}
+            <h2> Search Results</h2>
+        {% endif %}
 
         <div class="cards">
             {% for disease in diseases %}
                 <div class="card">
                     <h3>{{ disease.name }}</h3>
+
+                    {% if not selected_plant %}
+                        <p><b>Plant:</b> {{ disease.plant.name }}</p>
+                    {% endif %}
 
                     {% if disease.image %}
                         <img src="{{ disease.image.url }}" class="disease-img">
@@ -69,6 +79,7 @@
                 </div>
             {% endfor %}
         </div>
+
     {% endif %}
 
 </div>
@@ -78,10 +89,11 @@
 const input = document.getElementById("searchInput");
 const box = document.getElementById("suggestions");
 
+//  LIVE SEARCH (WORKS EVEN FOR "a")
 input.addEventListener("keyup", function() {
-    let query = input.value;
+    let query = input.value.trim();
 
-    if (query.length === 0) {
+    if (query.length < 1) {
         box.innerHTML = "";
         return;
     }
@@ -91,14 +103,20 @@ input.addEventListener("keyup", function() {
         .then(data => {
             box.innerHTML = "";
 
-            data.forEach(item => {
+            if (data.length === 0) {
+                box.innerHTML = "<div class='suggestion-item'>No suggestions</div>";
+                return;
+            }
+
+            //  LIMIT RESULTS (max 8)
+            data.slice(0, 8).forEach(item => {
                 let div = document.createElement("div");
                 div.innerHTML = `<b>${item.type}:</b> ${item.name}`;
                 div.classList.add("suggestion-item");
 
+                //  AUTO SEARCH ON CLICK
                 div.onclick = () => {
-                    input.value = item.name;
-                    box.innerHTML = "";
+                    window.location.href = `/?q=${item.name}`;
                 };
 
                 box.appendChild(div);
@@ -106,9 +124,20 @@ input.addEventListener("keyup", function() {
         });
 });
 
+//  ENTER KEY SEARCH
+input.addEventListener("keypress", function(e) {
+    if (e.key === "Enter") {
+        submitSearch();
+    }
+});
+
+//  BUTTON SEARCH
 function submitSearch() {
-    let query = input.value;
-    window.location.href = `/?q=${query}`;
+    let query = input.value.trim();
+    if (query.length > 0) {
+        box.innerHTML = ""; // clear suggestions
+        window.location.href = `/?q=${query}`;
+    }
 }
 </script>
 

@@ -9,7 +9,7 @@ from .models import Plant, Disease, Treatment
 from .serializers import PlantSerializer
 
 
-# 🔹 BULK ADD API
+#  BULK ADD API
 @api_view(['POST'])
 def bulk_add_data(request):
     data_list = request.data
@@ -39,10 +39,10 @@ def bulk_add_data(request):
                 organic_alternatives=data.get('organic')
             )
 
-    return Response({"message": "Bulk data added successfully ✅"})
+    return Response({"message": "Bulk data added successfully "})
 
 
-# 🔹 API WITH AUTH
+#  API WITH AUTH
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def plant_list_api(request):
@@ -54,13 +54,13 @@ def plant_list_api(request):
         plants = plants.filter(name__icontains=query)
 
     if not plants.exists():
-        return Response({"message": "No plant found ❌", "data": []})
+        return Response({"message": "No plant found ", "data": []})
 
     serializer = PlantSerializer(plants, many=True)
     return Response(serializer.data)
 
 
-# 🔹 FRONTEND VIEW (SMART + SIMILAR SEARCH)
+#  FRONTEND VIEW (SMART + SIMILAR SEARCH)
 def home(request):
     plants = Plant.objects.all()
     diseases = None
@@ -69,33 +69,26 @@ def home(request):
     query = request.GET.get('q')
 
     if query:
+        # get matching plants
         plants = Plant.objects.filter(
             Q(name__icontains=query) |
             Q(diseases__name__icontains=query) |
             Q(diseases__symptoms__icontains=query)
         ).distinct()
 
-        # 🔥 SIMILAR SEARCH IF NOTHING FOUND
-        if not plants.exists():
-            all_names = list(Plant.objects.values_list('name', flat=True))
-            similar = get_close_matches(query, all_names, n=5, cutoff=0.5)
+        # IMPORTANT: also fetch diseases
+        diseases = Disease.objects.filter(
+            Q(plant__name__icontains=query) |
+            Q(name__icontains=query) |
+            Q(symptoms__icontains=query)
+        ).select_related('plant').distinct()
 
-            if similar:
-                plants = Plant.objects.filter(name__in=similar)
-
+    #  dropdown select (optional)
     plant_id = request.GET.get('plant')
     if plant_id:
         try:
             selected_plant = Plant.objects.get(id=plant_id)
-
-            if query:
-                diseases = selected_plant.diseases.filter(
-                    Q(name__icontains=query) |
-                    Q(symptoms__icontains=query)
-                ).distinct()
-            else:
-                diseases = selected_plant.diseases.all()
-
+            diseases = selected_plant.diseases.all()
         except Plant.DoesNotExist:
             selected_plant = None
             diseases = None
@@ -104,26 +97,44 @@ def home(request):
         'plants': plants,
         'diseases': diseases,
         'selected_plant': selected_plant,
-        'query': query 
-    })
+        'query': query
+    })                        
 
 
-# 🔹 SEARCH SUGGESTIONS
+#  SEARCH SUGGESTIONS
 def search_suggestions(request):
-    query = request.GET.get('q', '')
+    query = request.GET.get('q', '').lower()
     results = []
 
     if query:
-        plants = Plant.objects.filter(name__icontains=query)[:5]
+        #  PARTIAL MATCH
+        plants = Plant.objects.filter(name__icontains=query)
+        diseases = Disease.objects.filter(name__icontains=query)
+        symptoms = Disease.objects.filter(symptoms__icontains=query)
+
         for p in plants:
             results.append({"type": "Plant", "name": p.name})
 
-        diseases = Disease.objects.filter(name__icontains=query)[:5]
         for d in diseases:
             results.append({"type": "Disease", "name": d.name})
 
-        symptoms = Disease.objects.filter(symptoms__icontains=query)[:5]
         for s in symptoms:
             results.append({"type": "Symptom", "name": s.symptoms[:40]})
 
-    return JsonResponse(results, safe=False)
+        #  SIMILAR MATCH
+        if len(results) < 5:
+            all_names = list(Plant.objects.values_list('name', flat=True))
+            similar = get_close_matches(query, all_names, n=5, cutoff=0.3)
+
+            for name in similar:
+                results.append({"name": name})
+
+    #  REMOVE DUPLICATES
+    seen = set()
+    unique_results = []
+    for item in results:
+        if item["name"] not in seen:
+            unique_results.append(item)
+            seen.add(item["name"])
+
+    return JsonResponse(unique_results[:10], safe=False)
